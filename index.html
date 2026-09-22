@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="description" content="ShowLead — trade-show lead management">
+<link rel="manifest" href="manifest.webmanifest">
+<title>ShowLead</title>
+<style>
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;background:#f7f7f8}
+*{box-sizing:border-box}body{margin:0}.app{max-width:560px;margin:auto;padding:16px 14px 32px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}h1{font-size:24px;margin:0}
+.muted{color:#6b7280;font-size:13px}.badge{border:1px solid #ddd;border-radius:999px;padding:7px 10px;font-size:12px}
+.card{background:white;border:1px solid #e5e7eb;border-radius:16px;padding:16px;margin:10px 0}
+button,input,select,textarea{font:inherit}button{min-height:46px;border-radius:12px;border:1px solid #d1d5db;background:white;padding:10px 14px;font-weight:650;cursor:pointer}
+.primary{background:#111827;color:white;border-color:#111827}.full{width:100%}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.metric{padding:12px;border:1px solid #e5e7eb;border-radius:14px;background:white}.metric b{display:block;font-size:23px}.metric span{font-size:11px;color:#6b7280}
+.screen{display:none}.screen.active{display:block}.row{display:flex;gap:8px;align-items:center}.between{justify-content:space-between}
+label{font-size:12px;font-weight:700;display:block;margin:10px 0 5px}input,select,textarea{width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:10px;background:white;font-size:16px}textarea{min-height:90px}
+.scan{height:300px;border:2px dashed #cbd5e1;border-radius:20px;background:#eef2f7;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden}
+video{width:100%;height:100%;object-fit:cover}.hidden{display:none!important}.status{font-size:11px;border:1px solid #ddd;border-radius:999px;padding:4px 8px}
+.nav{display:flex;gap:7px;border-top:1px solid #e5e7eb;padding-top:12px;margin-top:18px}.nav button{flex:1}
+.photo{width:100%;max-height:220px;object-fit:contain;border-radius:12px;background:#f3f4f6}.lead{padding:13px;border:1px solid #e5e7eb;border-radius:14px;background:white;margin:8px 0}
+.notice{font-size:12px;padding:10px;border-radius:10px;background:#f3f4f6;color:#4b5563}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div><h1>ShowLead</h1><div class="muted">Trade-show lead management</div></div><span class="badge" id="syncBadge">Offline-ready</span></header>
+
+<section id="home" class="screen active">
+<div class="card"><div class="muted">ACTIVE EVENT</div><h2 style="margin:5px 0">AISTech 2026</h2><div class="muted">Pittsburgh · Team workspace</div></div>
+<button class="primary full" id="startScan">📷 Scan Business Card</button>
+<button class="full" id="manual" style="margin-top:8px">＋ Enter Lead Manually</button>
+<div class="grid" style="margin-top:12px"><div class="metric"><b id="myCount">0</b><span>My Leads</span></div><div class="metric"><b id="teamCount">0</b><span>Saved Leads</span></div><div class="metric"><b id="dueCount">0</b><span>Follow-ups</span></div></div>
+<div class="card"><b>Offline mode</b><p class="muted">Leads and card photos are saved on this device. When we add the shared backend, pending leads can synchronize with your team when internet returns.</p></div>
+</section>
+
+<section id="scan" class="screen">
+<div class="row"><button data-back>←</button><div><b>Scan Business Card</b><div class="muted">AISTech 2026</div></div></div>
+<div class="scan" style="margin-top:12px"><video id="video" autoplay playsinline></video><div id="cameraFallback"><div style="font-size:42px">▣</div><b>Camera preview</b><div class="muted">Tap Start Camera below</div></div></div>
+<canvas id="canvas" class="hidden"></canvas>
+<div class="row" style="margin-top:10px"><button id="cameraBtn" class="primary" style="flex:1">Start Camera</button><button id="captureBtn" style="flex:1" disabled>Capture</button></div>
+<button id="uploadBtn" class="full" style="margin-top:8px">Choose Card Photo</button>
+<input id="fileInput" type="file" accept="image/*" capture="environment" class="hidden">
+<div class="notice" style="margin-top:10px">This MVP stores the card photo locally. Real OCR/AI extraction will be connected next.</div>
+</section>
+
+<section id="form" class="screen">
+<div class="row"><button data-back>←</button><div><b>Confirm Lead</b><div class="muted">Review before saving</div></div></div>
+<div id="photoWrap" class="card hidden"><img id="cardPhoto" class="photo" alt="Captured business card"></div>
+<div class="notice">The original card image stays attached to the lead.</div>
+<form id="leadForm">
+<label>First name</label><input id="first" required>
+<label>Last name</label><input id="last" required>
+<label>Job title</label><input id="title">
+<label>Company</label><input id="company" required>
+<label>Email</label><input id="email" type="email">
+<label>Phone</label><input id="phone" type="tel">
+<label>Industry</label><select id="industry"><option>Steel</option><option>Railway</option><option>Cement</option><option>Mining</option><option>Manufacturing</option><option>Other</option></select>
+<label>Product / application interest</label><input id="interest">
+<label>Priority</label><select id="priority"><option>High</option><option selected>Medium</option><option>Low</option></select>
+<label>Assign to</label><select id="owner"><option>Sudeep Dayal</option><option>Dustin</option><option>Tim</option><option>Joe</option></select>
+<label>Follow-up date</label><input id="followup" type="date">
+<label>Notes</label><textarea id="notes"></textarea>
+<button class="primary full" style="margin-top:12px">Save Lead</button>
+</form>
+</section>
+
+<section id="leads" class="screen">
+<div class="row between"><div><b>Leads</b><div class="muted">Stored on this device</div></div><button id="newScan">＋ Scan</button></div>
+<input id="search" placeholder="Search name, company, interest…" style="margin-top:10px">
+<div id="leadList"></div>
+</section>
+
+<section id="detail" class="screen">
+<div class="row"><button data-back>←</button><div><b>Lead Details</b></div></div>
+<div id="detailBody" class="card"></div>
+</section>
+
+<section id="dashboard" class="screen">
+<div class="row"><button data-back>←</button><div><b>Event Dashboard</b><div class="muted">AISTech 2026</div></div></div>
+<div class="grid" style="margin-top:12px"><div class="metric"><b id="dTotal">0</b><span>Total</span></div><div class="metric"><b id="dHigh">0</b><span>High Priority</span></div><div class="metric"><b id="dDue">0</b><span>Follow-ups</span></div></div>
+<div class="card"><b>Status</b><div id="statusStats" class="muted" style="margin-top:8px"></div></div>
+</section>
+
+<div class="nav"><button data-nav="home">Home</button><button data-nav="leads">Leads</button><button data-nav="dashboard">Dashboard</button></div>
+</div>
+<script>
+const DB_KEY="showlead_v1";let leads=JSON.parse(localStorage.getItem(DB_KEY)||"[]"),currentPhoto="",stream=null;
+const $=id=>document.getElementById(id);
+function esc(s=""){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
+function save(){localStorage.setItem(DB_KEY,JSON.stringify(leads));render();}
+function show(id){document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));$(id).classList.add("active");render();}
+function render(){
+ $("myCount").textContent=leads.length;$("teamCount").textContent=leads.length;
+ const today=new Date().toISOString().slice(0,10);$("dueCount").textContent=leads.filter(x=>x.followup&&x.followup<=today&&x.status!=="Follow-up Complete").length;
+ $("dTotal").textContent=leads.length;$("dHigh").textContent=leads.filter(x=>x.priority==="High").length;$("dDue").textContent=leads.filter(x=>x.followup&&x.followup<=today&&x.status!=="Follow-up Complete").length;
+ const counts={};leads.forEach(x=>counts[x.status||"New"]=(counts[x.status||"New"]||0)+1);
+ $("statusStats").innerHTML=Object.entries(counts).map(([k,v])=>`<div class="row between" style="padding:6px 0"><span>${esc(k)}</span><b>${v}</b></div>`).join("")||"No leads yet.";
+ const q=($("search")?.value||"").toLowerCase();
+ $("leadList").innerHTML=leads.filter(x=>(x.name+" "+x.company+" "+x.interest).toLowerCase().includes(q)).map((x,i)=>`<div class="lead" data-index="${i}"><div class="row between"><div><b>${esc(x.name)}</b><div class="muted">${esc(x.company)}</div></div><span class="status">${esc(x.status||"New")}</span></div><div class="muted" style="margin-top:6px">${esc(x.interest||"No application entered")} · Owner: ${esc(x.owner)}</div></div>`).join("")||'<div class="card muted">No leads yet. Scan your first business card.</div>';
+ document.querySelectorAll(".lead").forEach(el=>el.onclick=()=>openDetail(Number(el.dataset.index)));
+}
+function openDetail(i){const x=leads[i];$("detailBody").innerHTML=`<h2>${esc(x.name)}</h2><div class="muted">${esc(x.title)} · ${esc(x.company)}</div><p>📧 ${esc(x.email||"—")}<br>📞 ${esc(x.phone||"—")}</p><p><b>Event:</b> ${esc(x.event)}<br><b>Industry:</b> ${esc(x.industry)}<br><b>Interest:</b> ${esc(x.interest||"—")}<br><b>Priority:</b> ${esc(x.priority)}<br><b>Owner:</b> ${esc(x.owner)}<br><b>Follow-up:</b> ${esc(x.followup||"—")}</p><p><b>Notes</b><br>${esc(x.notes||"—")}</p>${x.photo?`<img class="photo" src="${x.photo}" alt="Business card">`:""}<div class="row" style="margin-top:12px"><button id="markDone" class="primary" style="flex:1">Complete Follow-up</button><button id="deleteLead" style="flex:1">Delete</button></div>`;
+ $("markDone").onclick=()=>{leads[i].status="Follow-up Complete";save();show("leads")};
+ $("deleteLead").onclick=()=>{if(confirm("Delete this lead?")){leads.splice(i,1);save();show("leads")}};show("detail");
+}
+async function startCamera(){if(!navigator.mediaDevices?.getUserMedia){alert("Camera access is unavailable here. Choose a card photo instead.");return}try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false});$("video").srcObject=stream;$("video").classList.remove("hidden");$("cameraFallback").classList.add("hidden");$("captureBtn").disabled=false;$("cameraBtn").textContent="Camera Active"}catch(e){alert("Camera permission was not granted. You can choose a card photo instead.")}}
+function stopCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}}
+function photoFromFile(file){if(!file)return;const r=new FileReader();r.onload=()=>{currentPhoto=r.result;$("cardPhoto").src=currentPhoto;$("photoWrap").classList.remove("hidden");show("form")};r.readAsDataURL(file)}
+$("startScan").onclick=()=>show("scan");$("newScan").onclick=()=>show("scan");$("manual").onclick=()=>{currentPhoto="";$("leadForm").reset();$("photoWrap").classList.add("hidden");show("form")};$("cameraBtn").onclick=startCamera;
+$("captureBtn").onclick=()=>{const v=$("video"),c=$("canvas");if(!v.videoWidth)return; c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0);currentPhoto=c.toDataURL("image/jpeg",.82);$("cardPhoto").src=currentPhoto;$("photoWrap").classList.remove("hidden");stopCamera();show("form")};
+$("uploadBtn").onclick=()=>$("fileInput").click();$("fileInput").onchange=e=>photoFromFile(e.target.files[0]);
+$("leadForm").onsubmit=e=>{e.preventDefault();const x={id:Date.now(),name:$("first").value.trim()+" "+$("last").value.trim(),title:$("title").value.trim(),company:$("company").value.trim(),email:$("email").value.trim(),phone:$("phone").value.trim(),industry:$("industry").value,interest:$("interest").value.trim(),priority:$("priority").value,owner:$("owner").value,followup:$("followup").value,notes:$("notes").value.trim(),event:"AISTech 2026",status:"New",photo:currentPhoto};leads.unshift(x);save();currentPhoto="";$("leadForm").reset();$("photoWrap").classList.add("hidden");show("leads")};
+document.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>show(b.dataset.nav));document.querySelectorAll("[data-back]").forEach(b=>b.onclick=()=>{stopCamera();show("home")});$("search").oninput=render;render();
+if("serviceWorker" in navigator)navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
+window.addEventListener("beforeunload",stopCamera);
+</script>
+</body></html>
