@@ -1,9 +1,13 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#101827"><meta name="description" content="ShowLead trade-show lead capture">
-<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><title>ShowLead V2</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101827">
+<meta name="description" content="ShowLead trade-show lead management">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<title>ShowLead V3</title>
 <style>
 :root{--ink:#101827;--muted:#64748b;--line:#dbe2ea;--bg:#f6f7f9;--card:#fff}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--ink)}
@@ -19,25 +23,69 @@ input,select,textarea{width:100%;font:inherit;padding:13px 14px;border:1px solid
 .actions{display:flex;gap:10px;flex-wrap:wrap}.actions>*{flex:1;min-width:140px}.lead{cursor:pointer}.lead h3{margin:0 0 3px}.meta{color:var(--muted);line-height:1.5}.badge{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:5px 9px;font-size:12px;margin-left:6px}
 .high{background:#fff1f2}.medium{background:#fffbeb}.low{background:#f0fdf4}.camera{border-radius:18px;overflow:hidden;background:#0b1220;min-height:220px;display:flex;align-items:center;justify-content:center}.camera img{width:100%;max-height:420px;object-fit:contain}
 .progress{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}.progress i{display:block;height:100%;width:0;background:#101827}.empty{text-align:center;color:var(--muted);padding:30px}.toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:#101827;color:#fff;padding:12px 16px;border-radius:12px;display:none;z-index:50}
+.modal{position:fixed;inset:0;background:#f6f7f9;z-index:100;overflow:auto}.modal-inner{max-width:560px;margin:auto;padding:28px 18px 50px}.brand{font-size:38px;font-weight:850;margin-bottom:4px}.status{padding:10px 12px;border-radius:12px;background:#f1f5f9;margin:12px 0;font-size:14px}.success{background:#ecfdf5}.warn{background:#fffbeb}.danger{background:#fff1f2}
+.userbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.userbar .pill{font-size:13px}.syncdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#94a3b8;margin-right:5px}.syncdot.online{background:#16a34a}.syncdot.offline{background:#f59e0b}
 @media(max-width:650px){.app{padding:14px 12px 95px}.grid{grid-template-columns:1fr 1fr}.row{grid-template-columns:1fr}.event{font-size:25px}nav button{min-width:0;flex:1}.top{align-items:flex-start}}
-</style></head>
+</style>
+</head>
 <body>
-<div id="toast" class="toast"></div><div class="app">
-<header class="top"><div><h1>ShowLead</h1><div class="sub">Trade-show lead management</div></div><div class="pill">Offline-ready</div></header>
+<div id="toast" class="toast"></div>
+
+<div id="setupModal" class="modal">
+  <div class="modal-inner">
+    <div class="brand">ShowLead</div>
+    <div class="sub">Trade-show lead management</div>
+
+    <div id="setupStep" class="card">
+      <h2>Connect your team</h2>
+      <p class="sub">Enter your Supabase Project URL and Publishable Key once on this device. They are saved only in this browser.</p>
+      <div class="field"><label>Supabase Project URL</label><input id="sbUrl" placeholder="https://xxxxx.supabase.co" autocomplete="off"></div>
+      <div class="field"><label>Supabase Publishable Key</label><input id="sbKey" placeholder="sb_publishable_..." autocomplete="off"></div>
+      <button class="primary full" onclick="saveSupabaseConfig()">Save & Connect</button>
+      <button class="full" onclick="useLocalOnly()">Use ShowLead locally for now</button>
+      <div id="setupMsg" class="status">You can switch to cloud sharing later from Settings.</div>
+    </div>
+
+    <div id="loginStep" class="card" style="display:none">
+      <h2>Team Login</h2>
+      <p class="sub">Use your ShowLead team account.</p>
+      <div class="field"><label>Email</label><input id="authEmail" type="email" autocomplete="email"></div>
+      <div class="field"><label>Password</label><input id="authPassword" type="password" autocomplete="current-password"></div>
+      <div class="field"><label>Your name <span class="small">(used for new leads)</span></label><input id="authName" placeholder="Sudeep Dayal"></div>
+      <div class="actions">
+        <button class="primary" onclick="login()">Log In</button>
+        <button onclick="signup()">Create Account</button>
+      </div>
+      <button class="full" onclick="useLocalOnly()">Continue Local-Only</button>
+      <button class="full" onclick="showSetup()">Change Supabase Settings</button>
+      <div id="loginMsg" class="status">Cloud is configured. Log in to share leads with the team.</div>
+    </div>
+  </div>
+</div>
+
+<div id="appShell" style="display:none">
+<div class="app">
+<header class="top">
+  <div><h1>ShowLead</h1><div class="sub">Trade-show lead management</div></div>
+  <div class="userbar">
+    <div class="pill" id="syncStatus"><span class="syncdot"></span>Local</div>
+    <button onclick="openSettings()">⚙</button>
+  </div>
+</header>
 
 <section id="home" class="view active">
 <div class="card hero"><div class="eyebrow">Active event</div><div class="event">AISTech 2026</div><div class="sub">Pittsburgh · Team workspace</div></div>
 <button class="primary full" onclick="startScan()">📷 Scan Business Card</button><button class="full" onclick="newLead()">＋ Enter Lead Manually</button>
 <div class="grid"><div class="card stat"><b id="myCount">0</b><span>My Leads</span></div><div class="card stat"><b id="allCount">0</b><span>Saved Leads</span></div><div class="card stat"><b id="followCount">0</b><span>Follow-ups</span></div></div>
-<div class="card"><h2>Free / local-first V2</h2><p class="sub">Business-card OCR runs in your browser using Tesseract.js. No paid OCR API is required for this prototype.</p><p class="small">Team sharing will be added with a free Supabase project after the OCR workflow is tested.</p></div>
+<div class="card"><h2>V3 · Local-first + Team Cloud</h2><p class="sub">Leads save locally first. When you are signed in and online, they are synchronized to the shared Supabase database.</p><p class="small">Business-card photos remain on the device in this first cloud version. We can add shared photo storage later.</p></div>
 </section>
 
-<section id="leads" class="view"><div class="top"><div><h2>Leads</h2><div class="sub">Stored on this device</div></div><button onclick="startScan()">＋ Scan</button></div>
-<input id="search" placeholder="Search name, company, email, interest..." oninput="renderLeads"><div id="leadList"></div></section>
+<section id="leads" class="view"><div class="top"><div><h2>Leads</h2><div class="sub" id="leadSub">Stored on this device</div></div><button onclick="startScan()">＋ Scan</button></div>
+<input id="search" placeholder="Search name, company, email, interest..." oninput="renderLeads()"><div id="leadList"></div></section>
 
 <section id="dashboard" class="view"><div class="card"><h2>Dashboard</h2><div class="grid">
 <div class="card stat"><b id="dTotal">0</b><span>Total leads</span></div><div class="card stat"><b id="dHigh">0</b><span>High priority</span></div><div class="card stat"><b id="dUnassigned">0</b><span>Unassigned</span></div></div></div>
-<div class="card"><h3>Data tools</h3><div class="actions"><button onclick="exportJSON()">Export JSON</button><button onclick="exportCSV()">Export CSV</button><button onclick="document.getElementById('importFile').click()">Import JSON</button></div><input id="importFile" type="file" accept=".json" hidden onchange="importJSON(event)"><p class="small">Useful for moving test data between phones until cloud sharing is connected.</p></div></section>
+<div class="card"><h3>Data tools</h3><div class="actions"><button onclick="exportJSON()">Export JSON</button><button onclick="exportCSV()">Export CSV</button><button onclick="document.getElementById('importFile').click()">Import JSON</button></div><input id="importFile" type="file" accept=".json" hidden onchange="importJSON(event)"><p class="small">Keep using JSON/CSV export as a backup.</p></div></section>
 
 <section id="scan" class="view"><div class="top"><div><h2>Scan Business Card</h2><div class="sub">Take a photo or choose one from your phone.</div></div><button onclick="showView('home')">Close</button></div>
 <div class="card"><div class="camera"><img id="preview" alt="Business card preview"></div>
@@ -54,7 +102,7 @@ input,select,textarea{width:100%;font:inherit;padding:13px 14px;border:1px solid
 <div class="row"><div class="field"><label>Email</label><input id="email" type="email"></div><div class="field"><label>Phone</label><input id="phone" type="tel"></div></div>
 <div class="row"><div class="field"><label>Website</label><input id="website"></div><div class="field"><label>Industry</label><input id="industry" placeholder="Steel, Railway, Cement..."></div></div>
 <div class="row"><div class="field"><label>Application / product interest</label><input id="interest"></div><div class="field"><label>Priority</label><select id="priority"><option>High</option><option selected>Medium</option><option>Low</option></select></div></div>
-<div class="row"><div class="field"><label>Owner</label><input id="owner" value="Sudeep Dayal"></div><div class="field"><label>Follow-up date</label><input id="followUp" type="date"></div></div>
+<div class="row"><div class="field"><label>Owner</label><input id="owner"></div><div class="field"><label>Follow-up date</label><input id="followUp" type="date"></div></div>
 <div class="field"><label>Trade-show notes</label><textarea id="notes" placeholder="What did you discuss? What should happen next?"></textarea></div>
 <div id="photoInfo" class="small">No photo attached.</div><button class="primary full" onclick="saveLead()">Save Lead</button>
 </div></section>
@@ -62,30 +110,197 @@ input,select,textarea{width:100%;font:inherit;padding:13px 14px;border:1px solid
 <section id="detail" class="view"><div class="top"><div><h2>Lead Details</h2><div class="sub">Edit or update this lead</div></div><button onclick="showView('leads')">Back</button></div><div id="detailContent"></div></section>
 </div>
 <nav><button onclick="showView('home')">Home</button><button onclick="showView('leads')">Leads</button><button onclick="showView('dashboard')">Dashboard</button></nav>
+</div>
 
+<div id="settingsModal" class="modal" style="display:none">
+  <div class="modal-inner">
+    <div class="top"><div><div class="brand" style="font-size:30px">Settings</div><div class="sub">ShowLead connection</div></div><button onclick="closeSettings()">Close</button></div>
+    <div class="card">
+      <h3>Cloud connection</h3>
+      <div id="settingsStatus" class="status"></div>
+      <button class="primary full" onclick="openLoginFromSettings()">Log in / switch account</button>
+      <button class="full" onclick="disconnectCloud()">Disconnect cloud on this device</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
-const KEY='showlead_v2_leads';let leads=JSON.parse(localStorage.getItem(KEY)||'[]'),currentPhoto='',editingId=null;
+const KEY='showlead_v3_leads';
+const CONFIG_KEY='showlead_v3_supabase';
+const MODE_KEY='showlead_v3_mode';
+const EVENT_NAME='AISTech 2026';
+const EVENT_LOCATION='Pittsburgh';
+let leads=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem('showlead_v2_leads')||'[]');
+let currentPhoto='',editingId=null, sb=null, session=null, profile=null, eventId=null, syncing=false;
 const $=id=>document.getElementById(id),v=id=>$(id).value.trim();
-function toast(t){let x=$('toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',2200)}
-function showView(id){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));$(id).classList.add('active');if(id==='leads')renderLeads();if(id==='dashboard')updateStats()}
-function updateStats(){$('myCount').textContent=leads.filter(x=>(x.owner||'Sudeep Dayal')==='Sudeep Dayal').length;$('allCount').textContent=leads.length;$('followCount').textContent=leads.filter(x=>x.followUp).length;$('dTotal').textContent=leads.length;$('dHigh').textContent=leads.filter(x=>x.priority==='High').length;$('dUnassigned').textContent=leads.filter(x=>!x.owner).length}
+
+function toast(t){let x=$('toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',2400)}
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function setMsg(id,t,kind=''){let e=$(id);e.textContent=t;e.className='status '+kind}
+function config(){try{return JSON.parse(localStorage.getItem(CONFIG_KEY)||'null')}catch{return null}}
+function isLocalOnly(){return localStorage.getItem(MODE_KEY)==='local'}
+function setSyncStatus(text,online=false){$('syncStatus').innerHTML='<span class="syncdot '+(online?'online':'')+'"></span>'+esc(text)}
+function showSetup(){ $('setupStep').style.display='block'; $('loginStep').style.display='none'; $('setupModal').style.display='block'; let c=config(); if(c){$('sbUrl').value=c.url||'';$('sbKey').value=c.key||''} }
+function showLogin(){ $('setupStep').style.display='none'; $('loginStep').style.display='block'; $('setupModal').style.display='block'; setMsg('loginMsg','Cloud is configured. Log in to share leads with the team.')}
+function hideSetup(){ $('setupModal').style.display='none' }
+
+function useLocalOnly(){
+  localStorage.setItem(MODE_KEY,'local');
+  hideSetup(); $('appShell').style.display='block'; setSyncStatus('Local only'); $('leadSub').textContent='Stored on this device';
+  updateStats();renderLeads();
+}
+
+async function saveSupabaseConfig(){
+  const url=$('sbUrl').value.trim().replace(/\/$/,'');
+  const key=$('sbKey').value.trim();
+  if(!/^https:\/\/[A-Za-z0-9.-]+\.supabase\.co$/.test(url) || !key){setMsg('setupMsg','Please enter the Supabase Project URL and Publishable Key.','danger');return}
+  try{
+    sb=window.supabase.createClient(url,key);
+    const {data,error}=await sb.auth.getSession();
+    if(error) throw error;
+    localStorage.setItem(CONFIG_KEY,JSON.stringify({url,key}));
+    localStorage.removeItem(MODE_KEY);
+    showLogin();
+    setMsg('loginMsg',data.session?'Cloud connection ready.':'Cloud connected. Please log in.');
+  }catch(e){setMsg('setupMsg','Could not connect. Check the Project URL and Publishable Key.','danger')}
+}
+
+async function initCloud(){
+  const c=config(); if(!c)return false;
+  try{
+    sb=window.supabase.createClient(c.url,c.key);
+    const {data,error}=await sb.auth.getSession();
+    if(error)throw error;
+    session=data.session||null;
+    sb.auth.onAuthStateChange((_event,s)=>{session=s||null; if(session){afterLogin()}});
+    if(session){await afterLogin();return true}
+    showLogin();return true;
+  }catch(e){showSetup();setMsg('setupMsg','Saved cloud settings could not be opened. Please check them again.','danger');return false}
+}
+
+async function login(){
+  if(!sb){showSetup();return}
+  const email=v('authEmail'),password=$('authPassword').value;
+  if(!email||!password){setMsg('loginMsg','Enter your email and password.','danger');return}
+  setMsg('loginMsg','Signing in…');
+  const {data,error}=await sb.auth.signInWithPassword({email,password});
+  if(error){setMsg('loginMsg',error.message,'danger');return}
+  session=data.session; await afterLogin();
+}
+
+async function signup(){
+  if(!sb){showSetup();return}
+  const email=v('authEmail'),password=$('authPassword').value,name=v('authName');
+  if(!email||password.length<6||!name){setMsg('loginMsg','Enter your name, email and a password of at least 6 characters.','danger');return}
+  setMsg('loginMsg','Creating account…');
+  const {data,error}=await sb.auth.signUp({email,password});
+  if(error){setMsg('loginMsg',error.message,'danger');return}
+  if(data.session){session=data.session;await afterLogin()}
+  else setMsg('loginMsg','Account created. If email confirmation is enabled, check your email, then return here and log in.','success');
+}
+
+async function afterLogin(){
+  hideSetup();$('appShell').style.display='block';setSyncStatus('Syncing…',navigator.onLine);
+  try{
+    await ensureProfile();
+    await ensureEvent();
+    await syncCloud();
+    $('leadSub').textContent='Shared team leads';
+    setSyncStatus('Cloud synced',true);
+  }catch(e){console.error(e);setSyncStatus(navigator.onLine?'Cloud error':'Offline');toast('Cloud sync needs attention')}
+  updateStats();renderLeads();
+}
+
+async function ensureProfile(){
+  if(!session)return;
+  const name=v('authName')||session.user.user_metadata?.full_name||session.user.email?.split('@')[0]||'Team member';
+  const {data,error}=await sb.from('profiles').upsert({id:session.user.id,full_name:name,company:'',role:'sales'},{onConflict:'id'}).select().single();
+  if(error)throw error; profile=data;
+}
+
+async function ensureEvent(){
+  let {data,error}=await sb.from('events').select('*').eq('name',EVENT_NAME).limit(1);
+  if(error)throw error;
+  if(data&&data.length){eventId=data[0].id;return}
+  const r=await sb.from('events').insert({name:EVENT_NAME,location:EVENT_LOCATION}).select().single();
+  if(r.error)throw r.error; eventId=r.data.id;
+}
+
+function cloudToLocal(x){
+  return {id:x.id,event:EVENT_NAME,eventId:x.event_id||eventId,ownerId:x.owner_id||'',firstName:x.first_name||'',lastName:x.last_name||'',title:x.job_title||'',company:x.company||'',email:x.email||'',phone:x.phone||'',website:x.website||'',linkedin:x.linkedin||'',industry:x.industry||'',interest:x.application||x.product_interest||'',priority:x.priority||'Medium',status:x.status||'New',owner:x.owner_name||'',followUp:x.follow_up_date||'',notes:x.notes||'',photo:'',createdAt:x.created_at||new Date().toISOString(),updatedAt:x.updated_at||x.created_at||new Date().toISOString(),source:x.source||'Business Card'}}
+
+function localToCloud(x){
+  return {id:x.id,event_id:x.eventId||eventId,owner_id:x.ownerId||session?.user?.id||null,first_name:x.firstName||'',last_name:x.lastName||'',job_title:x.title||'',company:x.company||'',email:x.email||'',phone:x.phone||'',website:x.website||'',linkedin:x.linkedin||'',industry:x.industry||'',application:x.interest||'',product_interest:x.interest||'',priority:x.priority||'Medium',status:x.status||'New',follow_up_date:x.followUp||null,notes:x.notes||'',business_card_image_url:null,source:x.source||'Business Card',created_at:x.createdAt||new Date().toISOString(),updated_at:new Date().toISOString()}
+}
+
+async function syncCloud(){
+  if(!sb||!session||!navigator.onLine||syncing)return;
+  syncing=true;setSyncStatus('Syncing…',true);
+  try{
+    const {data:remote,error}=await sb.from('leads').select('*').eq('event_id',eventId);
+    if(error)throw error;
+    const map=new Map(leads.map(x=>[x.id,x]));
+    (remote||[]).forEach(r=>{const cloud=cloudToLocal(r);const local=map.get(r.id);map.set(r.id,local?{...cloud,photo:local.photo||''}:cloud)});
+    leads=Array.from(map.values());
+    localStorage.setItem(KEY,JSON.stringify(leads));
+    const remoteIds=new Set((remote||[]).map(x=>x.id));
+    const pending=leads.filter(x=>!remoteIds.has(x.id));
+    for(const x of pending){const {error:e}=await sb.from('leads').upsert(localToCloud(x),{onConflict:'id'});if(e)throw e}
+    setSyncStatus('Cloud synced',true);
+  }finally{syncing=false;updateStats();renderLeads()}
+}
+
+async function saveCloudLead(x){
+  if(!sb||!session||!navigator.onLine||!eventId)return;
+  const {error}=await sb.from('leads').upsert(localToCloud(x),{onConflict:'id'});
+  if(error)throw error;
+}
+
+async function deleteCloudLead(id){
+  if(!sb||!session||!navigator.onLine)return;
+  const {error}=await sb.from('leads').delete().eq('id',id);
+  if(error)throw error;
+}
+
+function showView(id){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));$(id).classList.add('active');if(id==='leads')renderLeads();if(id==='dashboard')updateStats()}
+function updateStats(){const mine=session?leads.filter(x=>x.ownerId===session.user.id):leads.filter(x=>(x.owner||'Sudeep Dayal')==='Sudeep Dayal');$('myCount').textContent=mine.length;$('allCount').textContent=leads.length;$('followCount').textContent=leads.filter(x=>x.followUp).length;$('dTotal').textContent=leads.length;$('dHigh').textContent=leads.filter(x=>x.priority==='High').length;$('dUnassigned').textContent=leads.filter(x=>!x.ownerId&&!x.owner).length}
 function saveStore(){localStorage.setItem(KEY,JSON.stringify(leads));updateStats();renderLeads()}
-function renderLeads(){let q=($('search')?.value||'').toLowerCase(),a=leads.filter(x=>JSON.stringify(x).toLowerCase().includes(q)),el=$('leadList');if(!a.length){el.innerHTML='<div class="card empty">No leads yet.</div>';return}el.innerHTML=a.slice().reverse().map(x=>`<div class="card lead ${x.priority==='High'?'high':x.priority==='Medium'?'medium':'low'}" onclick="openLead('${x.id}')"><h3>${esc((x.firstName+' '+x.lastName).trim()||'Unnamed')} <span class="badge">${esc(x.priority||'Medium')}</span></h3><div class="meta">${esc(x.company||'No company')}<br>${esc(x.title||'')} ${x.interest?'· '+esc(x.interest):''}<br>${esc(x.email||'')} ${x.phone?'· '+esc(x.phone):''}<br>Owner: ${esc(x.owner||'Unassigned')} ${x.followUp?'· Follow-up: '+esc(x.followUp):''}</div></div>`).join('')}
-function newLead(){editingId=null;currentPhoto='';['firstName','lastName','title','company','email','phone','website','industry','interest','notes','followUp'].forEach(id=>$(id).value='');$('priority').value='Medium';$('owner').value='Sudeep Dayal';$('photoInfo').textContent='No photo attached.';showView('form')}
-function startScan(){currentPhoto='';editingId=null;$('preview').src='';$('ocrBtn').disabled=true;$('ocrStatus').textContent='Choose or take a photo of the business card.';showView('scan')}
+function renderLeads(){let q=($('search')?.value||'').toLowerCase(),a=leads.filter(x=>JSON.stringify(x).toLowerCase().includes(q)),el=$('leadList');if(!a.length){el.innerHTML='<div class="card empty">No leads yet.</div>';return}el.innerHTML=a.slice().sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).map(x=>`<div class="card lead ${x.priority==='High'?'high':x.priority==='Medium'?'medium':'low'}" onclick="openLead('${x.id}')"><h3>${esc((x.firstName+' '+x.lastName).trim()||'Unnamed')} <span class="badge">${esc(x.priority||'Medium')}</span></h3><div class="meta">${esc(x.company||'No company')}<br>${esc(x.title||'')} ${x.interest?'· '+esc(x.interest):''}<br>${esc(x.email||'')} ${x.phone?'· '+esc(x.phone):''}<br>Owner: ${esc(x.owner||'Unassigned')} ${x.followUp?'· Follow-up: '+esc(x.followUp):''}</div></div>`).join('')}
+function newLead(){editingId=null;currentPhoto='';['firstName','lastName','title','company','email','phone','website','industry','interest','notes','followUp'].forEach(id=>$(id).value='');$('priority').value='Medium';$('owner').value=profile?.full_name||session?.user?.email?.split('@')[0]||'Sudeep Dayal';$('photoInfo').textContent='No photo attached.';showView('form')}
+function startScan(){currentPhoto='';editingId=null;$('preview').src='';$('ocrBtn').disabled=true;$('ocrStatus').textContent='Choose or take a photo of the business card.';$('rawOCR').style.display='none';$('progress').style.width='0';showView('scan')}
 function handleImage(e){let f=e.target.files?.[0];if(!f)return;let r=new FileReader();r.onload=()=>{currentPhoto=r.result;$('preview').src=currentPhoto;$('ocrBtn').disabled=false;$('ocrStatus').textContent='Photo ready. Tap “Read Card”.'};r.readAsDataURL(f)}
 async function runOCR(){if(!currentPhoto)return;let btn=$('ocrBtn');btn.disabled=true;let s=$('ocrStatus'),p=$('progress');s.textContent='Reading card…';try{let r=await Tesseract.recognize(currentPhoto,'eng',{logger:m=>{if(m.progress)p.style.width=(m.progress*100)+'%';if(m.status)s.textContent=m.status+(m.progress?' '+Math.round(m.progress*100)+'%':'')}});let text=r.data.text||'';$('rawOCR').value=text;$('rawOCR').style.display='block';fillForm(parseCard(text));$('photoInfo').textContent='Business-card photo attached.';showView('form');toast('Card read — please verify the fields.')}catch(e){toast('OCR failed — enter manually.');newLead()}finally{btn.disabled=false}}
-function parseCard(text){let lines=text.split(/\n+/).map(x=>x.trim()).filter(Boolean),email=(text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)||[])[0]||'',phone=(text.match(/(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]\d{4}/)||[])[0]||'',web=(text.match(/(?:https?:\/\/|www\.)[^\s]+/i)||[])[0]||'',clean=lines.filter(l=>!/@/.test(l)&&!(/\d{3}[\s.-]?\d{3}[\s.-]?\d{4}/.test(l))&&!/^https?:\/\//i.test(l)&&!/^www\./i.test(l)),words=['manager','director','engineer','president','vice','sales','marketing','maintenance','operations','procurement','buyer','purchasing','owner','ceo','cto','cfo','supervisor','consultant','specialist','technician'],title=clean.find(l=>words.some(w=>l.toLowerCase().includes(w)))||'',company=clean.find(l=>l!==title&&/\b(inc|llc|ltd|corp|corporation|company|co\.|group|technologies|manufacturing|steel|rail|lubrication)\b/i.test(l))||'',name=clean.find(l=>l!==title&&l!==company&&l.split(/\s+/).length>=2&&l.split(/\s+/).length<=4)||clean[0]||'',parts=name.split(/\s+/),first=parts.shift()||'';return{firstName:first,lastName:parts.join(' '),title,company,email,phone,website:web,industry:'',interest:'',priority:'Medium',owner:'Sudeep Dayal',followUp:'',notes:'',rawOCR:text}}
+function parseCard(text){let lines=text.split(/\n+/).map(x=>x.trim()).filter(Boolean),email=(text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)||[])[0]||'',phone=(text.match(/(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]\d{4}/)||[])[0]||'',web=(text.match(/(?:https?:\/\/|www\.)[^\s]+/i)||[])[0]||'',clean=lines.filter(l=>!/@/.test(l)&&!(/\d{3}[\s.-]?\d{3}[\s.-]?\d{4}/.test(l))&&!/^https?:\/\//i.test(l)&&!/^www\./i.test(l)),words=['manager','director','engineer','president','vice','sales','marketing','maintenance','operations','procurement','buyer','purchasing','owner','ceo','cto','cfo','supervisor','consultant','specialist','technician'],title=clean.find(l=>words.some(w=>l.toLowerCase().includes(w)))||'',company=clean.find(l=>l!==title&&/\b(inc|llc|ltd|corp|corporation|company|co\.|group|technologies|manufacturing|steel|rail|lubrication)\b/i.test(l))||'',name=clean.find(l=>l!==title&&l!==company&&l.split(/\s+/).length>=2&&l.split(/\s+/).length<=4)||clean[0]||'',parts=name.split(/\s+/),first=parts.shift()||'';return{firstName:first,lastName:parts.join(' '),title,company,email,phone,website:web,industry:'',interest:'',priority:'Medium',owner:profile?.full_name||'Sudeep Dayal',followUp:'',notes:'',rawOCR:text}}
 function fillForm(d){editingId=null;['firstName','lastName','title','company','email','phone','website','industry','interest','owner','followUp','notes'].forEach(k=>$(k).value=d[k]||'');$('priority').value=d.priority||'Medium';$('photoInfo').textContent=currentPhoto?'Business-card photo attached.':'No photo attached.'}
-function saveLead(){let x={id:editingId||crypto.randomUUID(),event:'AISTech 2026',createdAt:new Date().toISOString(),firstName:v('firstName'),lastName:v('lastName'),title:v('title'),company:v('company'),email:v('email'),phone:v('phone'),website:v('website'),industry:v('industry'),interest:v('interest'),priority:v('priority'),owner:v('owner'),followUp:v('followUp'),notes:v('notes'),photo:currentPhoto};if(editingId){let i=leads.findIndex(a=>a.id===editingId);if(i>=0)leads[i]={...leads[i],...x}}else leads.push(x);saveStore();toast('Lead saved');showView('leads')}
+async function saveLead(){
+  let existing=editingId?leads.find(a=>a.id===editingId):null;
+  let x={id:editingId||crypto.randomUUID(),event:EVENT_NAME,eventId:eventId||existing?.eventId||null,ownerId:existing?.ownerId||session?.user?.id||'',createdAt:existing?.createdAt||new Date().toISOString(),firstName:v('firstName'),lastName:v('lastName'),title:v('title'),company:v('company'),email:v('email'),phone:v('phone'),website:v('website'),industry:v('industry'),interest:v('interest'),priority:v('priority'),owner:v('owner'),followUp:v('followUp'),notes:v('notes'),photo:currentPhoto,status:existing?.status||'New',source:'Business Card'};
+  if(!x.ownerId&&session)x.ownerId=session.user.id;
+  if(editingId){let i=leads.findIndex(a=>a.id===editingId);if(i>=0)leads[i]={...leads[i],...x}}else leads.push(x);
+  saveStore();toast('Lead saved');showView('leads');
+  if(session&&navigator.onLine){try{await saveCloudLead(x);setSyncStatus('Cloud synced',true)}catch(e){setSyncStatus('Sync pending',false);toast('Saved locally; cloud sync pending')}}
+}
 function openLead(id){let x=leads.find(a=>a.id===id);if(!x)return;$('detailContent').innerHTML=`<div class="card"><h2>${esc((x.firstName+' '+x.lastName).trim()||'Unnamed')}</h2><p class="sub">${esc(x.title)} · ${esc(x.company)}</p><p>${x.email?'📧 '+esc(x.email)+'<br>':''}${x.phone?'📞 '+esc(x.phone)+'<br>':''}${x.website?'🌐 '+esc(x.website):''}</p><p><b>Priority:</b> ${esc(x.priority)}<br><b>Owner:</b> ${esc(x.owner||'Unassigned')}<br><b>Follow-up:</b> ${esc(x.followUp||'Not set')}<br><b>Interest:</b> ${esc(x.interest||'Not entered')}</p><p>${esc(x.notes||'No notes')}</p>${x.photo?'<img src="'+x.photo+'" style="max-width:100%;border-radius:14px" alt="Business card">':''}<div class="actions"><button onclick="editLead('${x.id}')">Edit</button><button onclick="deleteLead('${x.id}')">Delete</button></div></div>`;showView('detail')}
 function editLead(id){let x=leads.find(a=>a.id===id);if(!x)return;editingId=id;currentPhoto=x.photo||'';['firstName','lastName','title','company','email','phone','website','industry','interest','owner','followUp','notes'].forEach(k=>$(k).value=x[k]||'');$('priority').value=x.priority||'Medium';$('photoInfo').textContent=currentPhoto?'Business-card photo attached.':'No photo attached.';showView('form')}
-function deleteLead(id){if(!confirm('Delete this lead?'))return;leads=leads.filter(x=>x.id!==id);saveStore();showView('leads')}
-function download(n,d,t){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([d],{type:t}));a.download=n;a.click()}
+async function deleteLead(id){if(!confirm('Delete this lead?'))return;leads=leads.filter(x=>x.id!==id);saveStore();showView('leads');if(session&&navigator.onLine){try{await deleteCloudLead(id);toast('Lead deleted')}catch(e){toast('Deleted locally; cloud delete pending')}}}
+function download(n,d,t){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([d],{type:t}));a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function exportJSON(){download('showlead-backup.json',JSON.stringify(leads,null,2),'application/json')}
 function exportCSV(){let c=['firstName','lastName','title','company','email','phone','website','industry','interest','priority','owner','followUp','notes','event','createdAt'],rows=[c,...leads.map(x=>c.map(k=>x[k]||''))].map(r=>r.map(z=>`"${String(z).replaceAll('"','""')}"`).join(',')).join('\n');download('showlead-leads.csv',rows,'text/csv')}
-function importJSON(e){let f=e.target.files?.[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let a=JSON.parse(r.result);if(!Array.isArray(a))throw 0;leads=[...leads,...a];saveStore();toast('Imported leads')}catch{toast('Invalid JSON backup')}};r.readAsText(f)}
-updateStats();renderLeads();if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
-</script></body></html>
+function importJSON(e){let f=e.target.files?.[0];if(!f)return;let r=new FileReader();r.onload=async()=>{try{let a=JSON.parse(r.result);if(!Array.isArray(a))throw 0;leads=[...leads,...a];saveStore();toast('Imported leads');if(session&&navigator.onLine)await syncCloud()}catch{toast('Invalid JSON backup')}};r.readAsText(f)}
+function openSettings(){let c=config();$('settingsStatus').textContent=session?('Logged in as '+(profile?.full_name||session.user.email)):(c?'Cloud configured but not logged in.':'Local-only mode');$('settingsModal').style.display='block'}
+function closeSettings(){$('settingsModal').style.display='none'}
+function openLoginFromSettings(){closeSettings();if(config())showLogin();else showSetup()}
+async function disconnectCloud(){if(sb&&session)await sb.auth.signOut().catch(()=>{});session=null;profile=null;eventId=null;localStorage.removeItem(CONFIG_KEY);localStorage.removeItem(MODE_KEY);closeSettings();showSetup();setSyncStatus('Local')}
+window.addEventListener('online',async()=>{if(session){try{await syncCloud()}catch(e){setSyncStatus('Sync error',false)}}});
+window.addEventListener('offline',()=>{setSyncStatus('Offline',false)});
+(async function boot(){
+  updateStats();renderLeads();
+  if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+  const c=config();
+  if(c){await initCloud()}else if(isLocalOnly()){hideSetup();$('appShell').style.display='block';setSyncStatus('Local only');updateStats();renderLeads()}else showSetup();
+})();
+</script>
+</body>
+</html>
